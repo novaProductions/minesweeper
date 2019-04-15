@@ -155,10 +155,12 @@
     <ClCompile Include="HelloWorld.cpp" />
     <ClCompile Include="HelloWorldClass.cpp" />
     <ClCompile Include="MineSweeper.cpp" />
+    <ClCompile Include="Tile.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HelloWorld.h" />
     <ClInclude Include="HelloWorldClass.h" />
+    <ClInclude Include="Tile.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

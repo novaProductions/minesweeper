@@ -2,6 +2,10 @@
 #include <windows.h>
 #include "HelloWorld.h"
 #include "HelloWorldClass.h"
+#include "Tile.h"
+#include <map>
+#include <cstdlib> 
+#include <ctime>
 using namespace std;
 
 
@@ -29,11 +33,22 @@ int main()
 #define FILE_MENU_OPEN 2
 #define FILE_MENU_EXIT 3
 #define CHANGE_TITLE 4
+#define TRIGGER_TILE_00 5
+#define TRIGGER_TILE_01 6
+#define TRIGGER_TILE_02 7
+#define TRIGGER_TILE_10 8
+#define TRIGGER_TILE_12 9
+#define TRIGGER_TILE_20 10
+#define TRIGGER_TILE_21 11
+#define TRIGGER_TILE_22 12
 
 HMENU hMenu;
 HWND hEdit;
+Tile tileBomb;
+Tile tileNotBomb;
 void AddMenus(HWND hWnd);
 void AddControls(HWND hWnd);
+map<string, Tile> board;
 
 LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
 
@@ -64,6 +79,17 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPreventInst, LPSTR args, int ncmd
 	return 0;
 }
 
+void TriggerActions(int tileId) {
+	Tile tile = board[to_string(tileId)];
+
+	HWND btn = tile.getBtn();
+	bool isBomb = tile.getIsBomb();
+	if (isBomb) {
+		SetWindowTextW(btn, L"B");
+	}
+}
+
+
 LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 	switch (msg)
 	{
@@ -83,7 +109,19 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 			wchar_t text[100];
 			GetWindowTextW(hEdit, text, 100);
 			SetWindowTextW(hWnd, text);
+			
 			break;
+		default:
+			TriggerActions(wp);
+		/*
+		case 900:
+			
+			TriggerActions(tileBomb);
+			break;
+		case 901:
+			TriggerActions(tileNotBomb);
+			break;
+		*/
 		}
 		break;
 	case WM_CREATE:
@@ -97,6 +135,7 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 		return DefWindowProcW(hWnd, msg, wp, lp);
 	}
 }
+
 
 void AddMenus(HWND hWnd) {
 	hMenu = CreateMenu();
@@ -116,9 +155,46 @@ void AddMenus(HWND hWnd) {
 	SetMenu(hWnd, hMenu);
 }
 
+map<string, int> determineIfBombShouldCreated(int bombCount, int rowCount, int colCount) {
+	map<string, int> tilesWithBombs;
+
+	srand(time(NULL));
+	while (tilesWithBombs.size() < bombCount) {
+		
+		int rowRand = rand() % rowCount;
+		int colRand = rand() % colCount;
+		string choosenTile = "9" + to_string(rowRand) + to_string(colRand);
+		if (tilesWithBombs.count(choosenTile) == 0) {
+			tilesWithBombs.insert(pair<string, int>(choosenTile, 0));
+		}
+		
+	}
+
+	return tilesWithBombs;
+}
+
 void AddControls(HWND hWnd) {
-	CreateWindowW(L"static", L"Enter text here :", WS_VISIBLE | WS_CHILD | WS_BORDER | SS_CENTER, 200, 100, 100, 50, hWnd, NULL, NULL, NULL);
-	hEdit = CreateWindowW(L"edit", L"...", WS_VISIBLE | WS_CHILD | ES_MULTILINE | ES_AUTOVSCROLL, 200, 152, 100, 50, hWnd, NULL, NULL, NULL);
+	
+	int rowCount = 4;
+	int colCount = 3;
+	int bombCount = 3;
+	map<string, int> tilesWithBombs = determineIfBombShouldCreated(bombCount, rowCount, colCount);
+
+	for (int r = 0; r < rowCount; r++) {
+		for (int c = 0; c < colCount; c++) {
+			string tileIdStr = "9" + to_string(r) + to_string(c);
+			int tileId = atoi(tileIdStr.c_str());
+			HWND btnBomb = CreateWindowW(L"button", NULL, WS_VISIBLE | WS_CHILD, 10 + c * 25, 10 + r * 25, 24, 24, hWnd, (HMENU)tileId, NULL, NULL);
+			
+			Tile tile1 = Tile(false, btnBomb);
+			if (tilesWithBombs.count(tileIdStr) == 1) {
+				tile1.setIsBomb(true);
+			}
+			
+			board.insert(pair<string, Tile>(tileIdStr, tile1));
+		}
+	}
+
 }
 
 
