@@ -4,12 +4,14 @@ Tile::Tile()
 {
 	Tile::isBomb = NULL;
 	Tile::btn = NULL;
+	Tile::numOfBombsAround = NULL;
 }
 
-Tile::Tile(bool isBomb, HWND btn)
+Tile::Tile(bool isBomb, HWND btn, int numOfBombsArround)
 {
 	Tile::isBomb = isBomb;
 	Tile::btn = btn;
+	Tile::numOfBombsAround = numOfBombsAround;
 }
 
 bool Tile::getIsBomb() {
@@ -28,4 +30,12 @@ HWND Tile::getBtn() {
 HWND Tile::setBtn(HWND btn) {
 	Tile::btn = btn;
 	return Tile::btn;
+}
+
+int Tile::getNumOfBombsAround() {
+	return numOfBombsAround;
+}
+int Tile::setNumOfBombsAround(int numOfBombsAround) {
+	Tile::numOfBombsAround = numOfBombsAround;
+	return Tile::numOfBombsAround;
 }

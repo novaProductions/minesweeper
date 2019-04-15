@@ -6,6 +6,7 @@
 #include <map>
 #include <cstdlib> 
 #include <ctime>
+#include <vector>
 using namespace std;
 
 
@@ -84,8 +85,13 @@ void TriggerActions(int tileId) {
 
 	HWND btn = tile.getBtn();
 	bool isBomb = tile.getIsBomb();
+	wchar_t numOfBombsAround[256];
+	wsprintfW(numOfBombsAround, L"%d", tile.getNumOfBombsAround());
 	if (isBomb) {
 		SetWindowTextW(btn, L"B");
+	}
+	else {
+		SetWindowTextW(btn, numOfBombsAround);
 	}
 }
 
@@ -109,19 +115,9 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 			wchar_t text[100];
 			GetWindowTextW(hEdit, text, 100);
 			SetWindowTextW(hWnd, text);
-			
 			break;
 		default:
 			TriggerActions(wp);
-		/*
-		case 900:
-			
-			TriggerActions(tileBomb);
-			break;
-		case 901:
-			TriggerActions(tileNotBomb);
-			break;
-		*/
 		}
 		break;
 	case WM_CREATE:
@@ -173,20 +169,69 @@ map<string, int> determineIfBombShouldCreated(int bombCount, int rowCount, int c
 	return tilesWithBombs;
 }
 
+int calNumOfBombsAround(map<string, int> tilesWithBombs, int row, int column) {
+	int numOfBombsAround = 0;
+
+	vector<string> adjacentTiles;
+
+	if (row > 0) {
+		
+		string southeast = "9" + to_string(row - 1) + to_string(column + 1);
+		string south = "9" + to_string(row - 1) + to_string(column);
+
+		adjacentTiles.push_back(southeast);
+		adjacentTiles.push_back(south);
+		
+	}
+
+	if (column > 0) {
+		
+		string northwest = "9" + to_string(row + 1) + to_string(column - 1);
+		string west = "9" + to_string(row) + to_string(column - 1);
+		
+		adjacentTiles.push_back(northwest);
+		adjacentTiles.push_back(west);
+	}
+
+	if (row > 0 && column > 0) {
+		string southwest = "9" + to_string(row - 1) + to_string(column - 1);
+		adjacentTiles.push_back(southwest);
+	}
+
+	string north = "9" + to_string(row + 1) + to_string(column);
+	string northeast = "9" + to_string(row + 1) + to_string(column + 1);
+	string east = "9" + to_string(row) + to_string(column + 1);
+
+	adjacentTiles.push_back(north);
+	adjacentTiles.push_back(northeast);
+	adjacentTiles.push_back(east);
+
+	
+	for (int i = 0; i < adjacentTiles.size(); ++i) {
+		if (tilesWithBombs.count(adjacentTiles[i]) == 1) {
+			numOfBombsAround++;
+		}
+	}
+
+	return numOfBombsAround;
+}
+
 void AddControls(HWND hWnd) {
 	
-	int rowCount = 4;
+	int rowCount = 3;
 	int colCount = 3;
 	int bombCount = 3;
 	map<string, int> tilesWithBombs = determineIfBombShouldCreated(bombCount, rowCount, colCount);
 
-	for (int r = 0; r < rowCount; r++) {
-		for (int c = 0; c < colCount; c++) {
-			string tileIdStr = "9" + to_string(r) + to_string(c);
+	for (int row = 0; row < rowCount; row++) {
+		for (int column = 0; column < colCount; column++) {
+			string tileIdStr = "9" + to_string(row) + to_string(column);
 			int tileId = atoi(tileIdStr.c_str());
-			HWND btnBomb = CreateWindowW(L"button", NULL, WS_VISIBLE | WS_CHILD, 10 + c * 25, 10 + r * 25, 24, 24, hWnd, (HMENU)tileId, NULL, NULL);
+			HWND btnBomb = CreateWindowW(L"button", NULL, WS_VISIBLE | WS_CHILD, 10 + column * 25, 10 + row * 25, 24, 24, hWnd, (HMENU)tileId, NULL, NULL);
 			
-			Tile tile1 = Tile(false, btnBomb);
+			int numOfBombsAround = calNumOfBombsAround(tilesWithBombs, row, column);
+			Tile tile1 = Tile(false, btnBomb, numOfBombsAround);
+			tile1.setNumOfBombsAround(numOfBombsAround);
 			if (tilesWithBombs.count(tileIdStr) == 1) {
 				tile1.setIsBomb(true);
 			}
@@ -196,15 +241,3 @@ void AddControls(HWND hWnd) {
 	}
 
 }
-
-
-// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
-// Debug program: F5 or Debug > Start Debugging menu
-
-// Tips for Getting Started: 
-//   1. Use the Solution Explorer window to add/manage files
-//   2. Use the Team Explorer window to connect to source control
-//   3. Use the Output window to see build output and other messages
-//   4. Use the Error List window to view errors
-//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
-//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
