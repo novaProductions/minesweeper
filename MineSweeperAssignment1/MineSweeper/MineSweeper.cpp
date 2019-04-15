@@ -1,47 +1,23 @@
 #include <iostream>
 #include <windows.h>
-#include "HelloWorld.h"
-#include "HelloWorldClass.h"
-#include "Tile.h"
+
 #include <map>
 #include <cstdlib> 
 #include <ctime>
 #include <vector>
+#include <string>
+
+#include "Tile.h"
+
 using namespace std;
 
-
-string samplePrint() {
-	return "Hello World 2!";
-}
-/*
-int main()
-{
-	cout << "Hello World!" << endl;;
-	cout << samplePrint() << endl;;
-	cout << printHelloWorld() << endl;;
-	HelloWorldClass helloWorldClass = *new HelloWorldClass();
-
-	HelloWorldClass board = *new HelloWorldClass(4);
-	cout << board.getNum() << endl;
-	board.setNum(6);
-	cout << board.getNum() << endl;
-	delete& board;
-
-}
-*/
 
 #define FILE_MENU_NEW 1
 #define FILE_MENU_OPEN 2
 #define FILE_MENU_EXIT 3
-#define CHANGE_TITLE 4
-#define TRIGGER_TILE_00 5
-#define TRIGGER_TILE_01 6
-#define TRIGGER_TILE_02 7
-#define TRIGGER_TILE_10 8
-#define TRIGGER_TILE_12 9
-#define TRIGGER_TILE_20 10
-#define TRIGGER_TILE_21 11
-#define TRIGGER_TILE_22 12
+#define GAME_STATUS 4
+#define NUM_BOMBS_DISPLAY 5
+#define RESTART_GAME 600
 
 HMENU hMenu;
 HWND hEdit;
@@ -50,8 +26,23 @@ Tile tileNotBomb;
 void AddMenus(HWND hWnd);
 void AddControls(HWND hWnd);
 map<string, Tile> board;
+HWND gameStatus;
+int numOfTilesClicked;
+int rowCount = 3;
+int colCount = 30;
+int bombCount = 1;
+bool isDead = false;
 
 LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
+
+void resizeMainWindow(HWND hWnd) {
+	int newWindowWidth = 35 + colCount * 25;
+	if (newWindowWidth <= 285) {
+		newWindowWidth = 285;
+	}
+
+	SetWindowPos(hWnd, 0, 0, 0, newWindowWidth, 130 + rowCount * 25, SWP_SHOWWINDOW | SWP_NOMOVE);
+}
 
 int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPreventInst, LPSTR args, int ncmdshow) {
 
@@ -66,7 +57,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPreventInst, LPSTR args, int ncmd
 	if (!RegisterClassW(&wc))
 		return -1;
 
-	CreateWindowW(L"myWindowClass", L"My Window", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 100, 100, 500, 500, NULL, NULL, NULL, NULL);
+	HWND mainWindow = CreateWindowW(L"myWindowClass", L"My Window", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 100, 100, 500, 500, NULL, NULL, NULL, NULL);
+	resizeMainWindow(mainWindow);
 
 	MSG msg = { 0 };
 
@@ -76,7 +68,6 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPreventInst, LPSTR args, int ncmd
 		DispatchMessage(&msg);
 	}
 
-	//MessageBox(NULL, L"Sample Box", L"Sub text", MB_OK);
 	return 0;
 }
 
@@ -87,11 +78,20 @@ void TriggerActions(int tileId) {
 	bool isBomb = tile.getIsBomb();
 	wchar_t numOfBombsAround[256];
 	wsprintfW(numOfBombsAround, L"%d", tile.getNumOfBombsAround());
+	bool bombNotTriggered = true;
 	if (isBomb) {
 		SetWindowTextW(btn, L"B");
+		SetWindowTextW(gameStatus, L"BOOM!!! Try Again");
+		isDead = true;
 	}
 	else {
 		SetWindowTextW(btn, numOfBombsAround);
+	}
+
+	numOfTilesClicked++;
+
+	if (numOfTilesClicked == (rowCount * colCount) - bombCount && isDead == false) {
+		SetWindowTextW(gameStatus, L"You Win!!");
 	}
 }
 
@@ -99,33 +99,29 @@ void TriggerActions(int tileId) {
 LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 	switch (msg)
 	{
-	case WM_COMMAND:
-		switch (wp) 
-		{
-		case FILE_MENU_NEW:
-			MessageBeep(MB_OK);
-			break;
-		case FILE_MENU_OPEN:
-			MessageBeep(MB_OK);
-			break;
-		case FILE_MENU_EXIT:
-			DestroyWindow(hWnd);
-			break;
-		case CHANGE_TITLE:
-			wchar_t text[100];
-			GetWindowTextW(hEdit, text, 100);
-			SetWindowTextW(hWnd, text);
-			break;
-		default:
-			TriggerActions(wp);
-		}
-		break;
 	case WM_CREATE:
 		AddMenus(hWnd);
 		AddControls(hWnd);
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
+		break;
+	case WM_COMMAND:
+		if (wp == RESTART_GAME) {
+			numOfTilesClicked = 0;
+			isDead = false;
+			for (map<string, Tile>::iterator iter = board.begin(); iter != board.end(); ++iter)
+			{
+				Tile tile = iter->second;
+				DestroyWindow(tile.getBtn());
+			}
+			board = map<string, Tile>();
+
+			resizeMainWindow(hWnd);
+			AddControls(hWnd);
+			break;
+		}
+		TriggerActions(wp);
 		break;
 	default:
 		return DefWindowProcW(hWnd, msg, wp, lp);
@@ -138,8 +134,7 @@ void AddMenus(HWND hWnd) {
 	HMENU hFileMenu = CreateMenu();
 	HMENU hSubMenu = CreateMenu();
 
-	AppendMenu(hSubMenu, MF_STRING, CHANGE_TITLE, L"Change Title");
-
+	AppendMenu(hMenu, MF_STRING, RESTART_GAME, L"Retry");
 	AppendMenu(hFileMenu, MF_STRING, FILE_MENU_NEW, L"New");
 	AppendMenu(hFileMenu, MF_POPUP, (UINT_PTR)hSubMenu, L"Open SubMent");
 	AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
@@ -205,7 +200,7 @@ int calNumOfBombsAround(map<string, int> tilesWithBombs, int row, int column) {
 	adjacentTiles.push_back(north);
 	adjacentTiles.push_back(northeast);
 	adjacentTiles.push_back(east);
-
+	
 	
 	for (int i = 0; i < adjacentTiles.size(); ++i) {
 		if (tilesWithBombs.count(adjacentTiles[i]) == 1) {
@@ -218,16 +213,21 @@ int calNumOfBombsAround(map<string, int> tilesWithBombs, int row, int column) {
 
 void AddControls(HWND hWnd) {
 	
-	int rowCount = 3;
-	int colCount = 3;
-	int bombCount = 3;
+
+	wstring bombDisplay = L"Bombs: ";
+	bombDisplay += to_wstring(bombCount);
+	
+	gameStatus = CreateWindowW(L"static", L"You are still alive ...for now", WS_VISIBLE | WS_CHILD, 10, 10, 200, 24, hWnd, (HMENU)GAME_STATUS, NULL, NULL);
+	CreateWindowW(L"static", bombDisplay.data(), WS_VISIBLE | WS_CHILD, 10, 40, 100, 24, hWnd, (HMENU)NUM_BOMBS_DISPLAY, NULL, NULL);
+
+
 	map<string, int> tilesWithBombs = determineIfBombShouldCreated(bombCount, rowCount, colCount);
 
 	for (int row = 0; row < rowCount; row++) {
 		for (int column = 0; column < colCount; column++) {
 			string tileIdStr = "9" + to_string(row) + to_string(column);
 			int tileId = atoi(tileIdStr.c_str());
-			HWND btnBomb = CreateWindowW(L"button", NULL, WS_VISIBLE | WS_CHILD, 10 + column * 25, 10 + row * 25, 24, 24, hWnd, (HMENU)tileId, NULL, NULL);
+			HWND btnBomb = CreateWindowW(L"button", NULL, WS_VISIBLE | WS_CHILD, 10 + column * 25, 60 + row * 25, 24, 24, hWnd, (HMENU)tileId, NULL, NULL);
 			
 			int numOfBombsAround = calNumOfBombsAround(tilesWithBombs, row, column);
 			Tile tile1 = Tile(false, btnBomb, numOfBombsAround);
