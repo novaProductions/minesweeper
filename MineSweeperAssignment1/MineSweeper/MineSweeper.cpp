@@ -6,6 +6,7 @@
 #include <ctime>
 #include <vector>
 #include <string>
+#include <wchar.h>
 
 #include "Tile.h"
 
@@ -17,10 +18,17 @@ using namespace std;
 #define FILE_MENU_EXIT 3
 #define GAME_STATUS 4
 #define NUM_BOMBS_DISPLAY 5
+#define NUM_COL_DISPLAY 6
+#define NUM_ROW_DISPLAY 7
 #define RESTART_GAME 600
+#define COLUMN_COUNT 8
+#define ROW_COUNT 9
+#define BOMB_COUNT 10
 
 HMENU hMenu;
-HWND hEdit;
+HWND ColumnSetting;
+HWND RowSetting;
+HWND BombSetting;
 Tile tileBomb;
 Tile tileNotBomb;
 void AddMenus(HWND hWnd);
@@ -28,10 +36,11 @@ void AddControls(HWND hWnd);
 map<string, Tile> board;
 HWND gameStatus;
 int numOfTilesClicked;
-int rowCount = 3;
-int colCount = 30;
-int bombCount = 1;
+int rowCount = 10;
+int colCount = 10;
+int bombCount = 10;
 bool isDead = false;
+string rowCountUpdate;
 
 LRESULT CALLBACK WindowProcedure(HWND, UINT, WPARAM, LPARAM);
 
@@ -95,6 +104,13 @@ void TriggerActions(int tileId) {
 	}
 }
 
+void resetBoardParams(HWND hWnd, int counter) {
+	wchar_t countUpdate[100];
+	wchar_t* pEnd;
+	GetWindowTextW(hWnd, countUpdate, 100);
+	long colCountLong = wcstol(countUpdate, &pEnd, 10);
+	counter = (int)colCountLong;
+}
 
 LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 	switch (msg)
@@ -117,6 +133,27 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 			}
 			board = map<string, Tile>();
 
+			wchar_t colCountUpdate[100];
+			wchar_t * pEnd;
+			GetWindowTextW(ColumnSetting, colCountUpdate, 100);
+			long colCountLong = wcstol(colCountUpdate, &pEnd,10);
+			colCount = (int)colCountLong;
+
+			//wchar_t rowCountUpdate[100] = {};
+			//wchar_t* pEndRow;
+			//string rowCountUpdate = "";
+			rowCountUpdate.resize(GetWindowTextLength(RowSetting) + 1, '\0');
+			GetWindowTextA(RowSetting, LPSTR(rowCountUpdate.c_str()), GetWindowTextLength(RowSetting) + 1);
+			//long rowCountLong = wcstol(rowCountUpdate, &pEndRow, 10);
+			rowCount = atoi(rowCountUpdate.c_str());
+			//rowCount = (int)rowCountLong;
+
+			wchar_t bombCountUpdate[100];
+			wchar_t* pEndBomb;
+			GetWindowTextW(BombSetting, bombCountUpdate, 100);
+			long bombCountLong = wcstol(bombCountUpdate, &pEndBomb, 10);
+			bombCount = (int)bombCountLong;
+
 			resizeMainWindow(hWnd);
 			AddControls(hWnd);
 			break;
@@ -131,18 +168,9 @@ LRESULT CALLBACK WindowProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
 
 void AddMenus(HWND hWnd) {
 	hMenu = CreateMenu();
-	HMENU hFileMenu = CreateMenu();
-	HMENU hSubMenu = CreateMenu();
 
 	AppendMenu(hMenu, MF_STRING, RESTART_GAME, L"Retry");
-	AppendMenu(hFileMenu, MF_STRING, FILE_MENU_NEW, L"New");
-	AppendMenu(hFileMenu, MF_POPUP, (UINT_PTR)hSubMenu, L"Open SubMent");
-	AppendMenu(hFileMenu, MF_SEPARATOR, NULL, NULL);
-	AppendMenu(hFileMenu, MF_STRING, FILE_MENU_EXIT, L"Exit");
-
-	AppendMenu(hMenu, MF_POPUP, (UINT_PTR)hFileMenu, L"File");
 	
-
 	SetMenu(hWnd, hMenu);
 }
 
@@ -212,14 +240,21 @@ int calNumOfBombsAround(map<string, int> tilesWithBombs, int row, int column) {
 }
 
 void AddControls(HWND hWnd) {
-	
 
-	wstring bombDisplay = L"Bombs: ";
-	bombDisplay += to_wstring(bombCount);
+	bombCount;
+	rowCount;
+	colCount;
 	
 	gameStatus = CreateWindowW(L"static", L"You are still alive ...for now", WS_VISIBLE | WS_CHILD, 10, 10, 200, 24, hWnd, (HMENU)GAME_STATUS, NULL, NULL);
-	CreateWindowW(L"static", bombDisplay.data(), WS_VISIBLE | WS_CHILD, 10, 40, 100, 24, hWnd, (HMENU)NUM_BOMBS_DISPLAY, NULL, NULL);
+	
+	CreateWindowW(L"static", L"Bombs: ", WS_VISIBLE | WS_CHILD, 10, 40, 40, 24, hWnd, (HMENU)NUM_BOMBS_DISPLAY, NULL, NULL);
+	BombSetting = CreateWindowW(L"edit", to_wstring(bombCount).data(), WS_VISIBLE | WS_CHILD, 55, 40, 25, 20, hWnd, (HMENU)BOMB_COUNT, NULL, NULL);
 
+	CreateWindowW(L"static", L"Row: ", WS_VISIBLE | WS_CHILD, 85, 40, 80, 24, hWnd, (HMENU)NUM_ROW_DISPLAY, NULL, NULL);
+	RowSetting = CreateWindowW(L"edit", to_wstring(rowCount).data(), WS_VISIBLE | WS_CHILD, 125, 40, 25, 20, hWnd, (HMENU)ROW_COUNT, NULL, NULL);
+
+	CreateWindowW(L"static", L"Column: ", WS_VISIBLE | WS_CHILD, 155, 40, 40, 24, hWnd, (HMENU)NUM_COL_DISPLAY, NULL, NULL);
+	ColumnSetting = CreateWindowW(L"edit", to_wstring(colCount).data(), WS_VISIBLE | WS_CHILD, 205, 40, 25, 20, hWnd, (HMENU)COLUMN_COUNT, NULL, NULL);
 
 	map<string, int> tilesWithBombs = determineIfBombShouldCreated(bombCount, rowCount, colCount);
 
